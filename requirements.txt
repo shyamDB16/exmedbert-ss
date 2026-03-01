@@ -4,6 +4,7 @@ psmpy==0.3.13
 multipledispatch==0.6.0
 sqlalchemy==1.4.44
 sqlalchemy-utils==0.38.3
+mosaicml-streaming>=0.7.0  # For cloud-based data streaming
 ##pandas-stubs==1.5.1.221024
 commitizen==2.37.0
 vulture==2.6
