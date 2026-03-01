@@ -4,6 +4,35 @@ This guide lets you **smoke-test** pre-training on a Databricks GPU cluster (or 
 
 ---
 
+## Quick run via SSH tunnel (multi-GPU cluster)
+
+If you use the **Databricks SSH tunnel** and have a **multi-GPU** cluster:
+
+1. **Connect:** Remote-SSH to your cluster and open the repo folder (e.g. `exmedbert-ss` or its parent under `/Workspace/Users/<you>/...`).
+
+2. **One-time setup** (from repo root):
+   ```bash
+   pip install -r requirements.txt
+   export PYTHONPATH="${PWD}:${PYTHONPATH}"
+   python scripts/create_dummy_dataset.py --output-dir pretrain_data
+   ```
+
+3. **Run the minimal test** (5 steps, uses all visible GPUs):
+   ```bash
+   TRAIN_PT=pretrain_data/dummy_train.pt VAL_PT=pretrain_data/dummy_val.pt \
+     ./scripts/run_minimal_pretrain_test.sh
+   ```
+
+4. **Optional – persist checkpoints** across restarts: set before the run:
+   ```bash
+   export OUTPUT_DIR=/Workspace/Users/$(whoami)/exmedbert-ss/output/minimal_test_pretrain
+   export OUTPUT_DATA_DIR=/Workspace/Users/$(whoami)/exmedbert-ss/output/minimal_test_pretrain_data
+   ```
+
+**Verify:** `output/minimal_test_pretrain` (or your `OUTPUT_DIR`) should contain checkpoints and logs; `nvidia-smi` or cluster GPU metrics should show utilization. The script auto-detects multiple GPUs (e.g. "Using 4 gpus").
+
+---
+
 ## Do we have everything to run training?
 
 **Yes.** The repo is self-contained for training:
@@ -142,32 +171,49 @@ Only run this if you already have **MDS data** and an **embeddings** file (e.g. 
 
 ### 3.1 Save embeddings from existing .pt (one-time)
 
-If you have a sample `.pt` dataset, extract embeddings for the streaming script:
+If you have a sample `.pt` dataset (e.g. `pretrain_data/dummy_train.pt` or `komodo_panta_sample_train.pt`), extract embeddings for the streaming script:
 
 ```bash
 python scripts/save_embeddings_from_pt.py \
-  pretrain_data/komodo_panta_sample_train.pt \
+  pretrain_data/dummy_train.pt \
   pretrain_data/embeddings.pt
 ```
 
 This creates `pretrain_data/embeddings.pt` for use with streaming pre-training.
 
-### 3.2 Create minimal MDS data (on Databricks with Spark)
+### 3.2 Create minimal MDS data
+
+**Option A: From .pt files (no Spark)** — use this for a quick streaming smoke test:
+
+```bash
+# One-time: create dummy data and embeddings (if you don't have them)
+python scripts/create_dummy_dataset.py --output-dir pretrain_data
+python scripts/save_embeddings_from_pt.py pretrain_data/dummy_train.pt pretrain_data/embeddings.pt
+
+# Convert .pt to MDS (writes pretrain_data_mds/train and pretrain_data_mds/val)
+python scripts/convert_pt_to_mds.py \
+  --train-pt pretrain_data/dummy_train.pt \
+  --val-pt pretrain_data/dummy_val.pt \
+  --output-dir pretrain_data_mds
+```
+
+**Option B: On Databricks with Spark**
 
 - Use your existing Spark pipeline to build a **small** table (e.g. 100–500 rows) with the same schema as production.
 - Run `scripts/convert_spark_to_mds.py` (or the same logic in a notebook) with that table and a small output path (e.g. `/tmp/minimal_mds` or a UC volume path).
-- You’ll get something like:
-  - `{out}/train/` (and optionally `{out}/val/`)
-  - Use the same `embeddings.pt` as above.
+- You’ll get something like: `{out}/train/` and `{out}/val/`. Use the same `embeddings.pt` as in 3.1.
 
 ### 3.3 Run streaming pre-training (minimal steps)
 
 From repo root, with `train_remote` and `val_remote` pointing at your minimal MDS dirs (local or UC):
 
 ```bash
+# If testing without workspace MLflow (e.g. local file tracking), unset so script uses file:.../mlruns
+unset DATABRICKS_RUNTIME_VERSION
+
 python scripts/pretrain-exmed-bert-streaming.py \
-  /path/to/minimal_mds/train \
-  /path/to/minimal_mds/val \
+  pretrain_data_mds/train \
+  pretrain_data_mds/val \
   pretrain_data/embeddings.pt \
   output/minimal_streaming_test \
   output/minimal_streaming_test_data \
@@ -178,13 +224,45 @@ python scripts/pretrain-exmed-bert-streaming.py \
   --logging-steps 2 \
   --eval-steps 5 \
   --save-steps 5 \
-  --no-register-model
+  --no-register-model \
+  --no-log-model
 ```
 
-- Use `--no-register-model` to skip UC model registration for a quick test.
-- On Databricks, if data is on a UC volume, set `DATABRICKS_HOST` and `DATABRICKS_TOKEN` (or use a cluster that already has them).
+- Use `--no-register-model` to skip UC model registration.
+- Use `--no-log-model` to skip logging the model artifact to MLflow (avoids shared-weights save issues on a quick test).
+- If you see workspace experiment errors (e.g. `/Users/root` not found), run with `unset DATABRICKS_RUNTIME_VERSION` so MLflow uses local file tracking under the output data dir.
 
-This checks: MDS load, StreamingDataLoader, GPU training, checkpointing, and MLflow logging.
+This checks: MDS load, StreamingDataLoader, GPU training, checkpointing, and (if enabled) MLflow logging.
+
+---
+
+### 3.4 Test with a pre-created MLflow experiment (workspace or UC)
+
+If you run **directly on the workspace** (not via SSH as root), the default experiment path uses your user and works. To use a **specific experiment** (e.g. one you created in the UI or with artifacts in a Unity Catalog volume), create the experiment first, then pass its name:
+
+1. **Create the experiment** (one of these):
+   - **UI:** In Databricks, go to **Workspace** → right‑click a folder → **Create** → **MLflow experiment**. Give it a name (e.g. `exmedbert-streaming`). Optionally set **Artifact location** to a UC Volume path: `dbfs:/Volumes/<catalog>/<schema>/<volume>`.
+   - **API (UC Volume artifacts):** In a notebook or script:
+     ```python
+     import mlflow
+     EXP_NAME = "/Users/shyam.sankararaman@databricks.com/exmedbert-streaming"  # or /Shared/exmedbert-streaming
+     ARTIFACT_PATH = "dbfs:/Volumes/<catalog>/<schema>/<volume>"
+     mlflow.set_tracking_uri("databricks")
+     if mlflow.get_experiment_by_name(EXP_NAME) is None:
+         mlflow.create_experiment(name=EXP_NAME, artifact_location=ARTIFACT_PATH)
+     ```
+
+2. **Run the test** with that experiment:
+   ```bash
+   python scripts/pretrain-exmed-bert-streaming.py \
+     pretrain_data_mds/train pretrain_data_mds/val pretrain_data/embeddings.pt \
+     output/minimal_streaming output/minimal_streaming_data \
+     --mlflow-experiment-name "/Users/shyam.sankararaman@databricks.com/exmedbert-streaming" \
+     --max-steps 5 --no-register-model --local-cache-dir /tmp/mds_cache
+   ```
+   Use the exact experiment name/path you created. With this setup, **`/Users/root` is not used**; your experiment lives under your user (or Shared/UC), so there is no parent-directory error.
+
+3. **Check:** In **Machine Learning** → **Experiments**, open the experiment and confirm a new run with params and metrics.
 
 ---
 

@@ -301,7 +301,8 @@ class MedBertStreamingTrainer(Trainer):
         Save checkpoint with StreamingDataLoader state if applicable (per rank).
         Enables exact data-index resume when training is restarted with same GPU count.
         """
-        checkpoint_folder = super()._save_checkpoint(model, trial, metrics=metrics)
+        # Call parent without metrics= so it works across HF Trainer versions
+        checkpoint_folder = super()._save_checkpoint(model, trial)
 
         if not (
             self.use_streaming_dataloader

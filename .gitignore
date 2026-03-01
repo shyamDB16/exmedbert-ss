@@ -1,0 +1,26 @@
+# Training / run outputs (created at runtime)
+output/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+dist/
+build/
+
+# Local data (optional: remove if you want to commit sample data)
+pretrain_data/*.pt
+pretrain_data_mds/
+
+# Environment / IDE
+.venv/
+venv/
+.env
+.idea/
+.vscode/
+*.swp
+*~
+
+# MLflow local
+mlruns/

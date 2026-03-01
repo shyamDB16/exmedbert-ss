@@ -179,15 +179,32 @@ class StreamingPatientDataset(Dataset):
         # Load sample from streaming dataset
         sample = self.streaming_dataset[index]
         
-        # Convert numpy arrays to tensors
+        # Convert numpy arrays to tensors (MDS column names)
+        codes = torch.from_numpy(sample["codes"]).long()
+        ages = torch.from_numpy(sample["ages"]).long()
+        visits = torch.from_numpy(sample["visits"]).long()
+        segments = torch.from_numpy(sample["segments"]).long()
+        sex = torch.tensor(sample["sex"], dtype=torch.long)
+        state = torch.tensor(sample["state"], dtype=torch.long)
+        pad_id = self.code_embed("PAD")
+        attention_mask = sample["codes"] != pad_id
+        if isinstance(attention_mask, np.ndarray):
+            attention_mask = torch.from_numpy(attention_mask)
+        # Build dict with both MDS names and model-expected keys (ExMedBert: input_ids, entity_ids, position_ids, etc.)
         patient_data = {
-            "codes": torch.from_numpy(sample["codes"]).long(),
-            "ages": torch.from_numpy(sample["ages"]).long(),
-            "visits": torch.from_numpy(sample["visits"]).long(),
-            "segments": torch.from_numpy(sample["segments"]).long(),
-            "sex": torch.tensor(sample["sex"], dtype=torch.long),
-            "state": torch.tensor(sample["state"], dtype=torch.long),
-            "attention_mask": (sample["codes"] != self.code_embed("PAD")),
+            "codes": codes,
+            "ages": ages,
+            "visits": visits,
+            "segments": segments,
+            "sex": sex,
+            "state": state,
+            "attention_mask": attention_mask,
+            "input_ids": codes,
+            "entity_ids": segments,
+            "position_ids": visits,
+            "age_ids": ages,
+            "sex_ids": sex.unsqueeze(0).expand_as(codes) if codes.dim() > 0 else sex.unsqueeze(0),
+            "state_ids": state.unsqueeze(0).expand_as(codes) if codes.dim() > 0 else state.unsqueeze(0),
         }
         
         # Add labels for pretraining
@@ -200,6 +217,8 @@ class StreamingPatientDataset(Dataset):
             # Apply dynamic masking if enabled
             if self.dynamic_masking:
                 patient_data = self._apply_dynamic_masking(patient_data)
+            # Keep input_ids in sync with codes after dynamic masking
+            patient_data["input_ids"] = patient_data["codes"]
         else:
             # For fine-tuning, return endpoint labels
             endpoint_labels = torch.from_numpy(sample["endpoint_labels"]).float()
@@ -207,7 +226,9 @@ class StreamingPatientDataset(Dataset):
                 patient_data["labels"] = endpoint_labels.index_select(
                     dim=-1, index=self.endpoint_index
                 )
-        
+        # Return only keys the model expects (avoid passing extra keys into forward())
+        for key in ("codes", "ages", "visits", "segments", "sex", "state", "code_mask"):
+            patient_data.pop(key, None)
         return patient_data
     
     def _apply_dynamic_masking(self, patient_data: Dict[str, Tensor]) -> Dict[str, Tensor]:
@@ -241,7 +262,7 @@ class StreamingPatientDataset(Dataset):
         maskable_positions = []
         for pos in valid_positions:
             code_id = codes[pos].item()
-            code_str = self.code_embed.id_to_entity.get(code_id, "")
+            code_str = self.code_embed.ids_to_entity.get(code_id, "")
             
             # Skip special tokens
             if code_str in ["PAD", "MASK", "CLS", "SEP"]:
@@ -280,9 +301,10 @@ class StreamingPatientDataset(Dataset):
             # else: keep original (10%)
         
         patient_data["codes"] = codes
+        patient_data["input_ids"] = codes
         patient_data["code_mask"] = new_mask
         patient_data["code_labels"] = new_labels
-        
+
         return patient_data
     
     def endpoints(self, selected_endpoints: List[str]):

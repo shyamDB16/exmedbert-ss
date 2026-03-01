@@ -45,6 +45,19 @@ from exmed_bert.utils.mlflow_utils import (
 logger = logging.getLogger(__name__)
 
 
+def _log_saved_model_as_artifact(save_path: Path, original_error: Exception) -> None:
+    """
+    Fallback when mlflow.transformers.log_model fails (e.g. shared tensors):
+    log the already-saved model directory so it appears under run artifacts.
+    """
+    logger.warning("Logging saved model directory as artifact (transformers.log_model failed: %s)", original_error)
+    try:
+        mlflow.log_artifacts(str(save_path), artifact_path="model")
+        logger.info("Model files logged to run artifact path 'model/'")
+    except Exception as e2:
+        logger.warning("Could not log model as artifact: %s", e2)
+
+
 def setup_databricks_auth(db_host: Optional[str] = None, db_token: Optional[str] = None):
     """
     Configure Databricks authentication for Unity Catalog volumes.
@@ -333,6 +346,7 @@ def pretrain(
         load_best_model_at_end=True if eval_steps > 0 else False,
         metric_for_best_model="eval_loss",
         save_total_limit=3,  # Keep only last 3 checkpoints
+        save_safetensors=False,  # ExMedBert has shared tensors (decoder.bias); use PyTorch .bin
     )
     
     logger.info(f"Using {training_config.n_gpu} GPU(s)")
@@ -437,17 +451,29 @@ def pretrain(
         logger.info(f"Saving model to {save_path}")
         trainer.model.save_pretrained(save_path, safe_serialization=False)
         
-        # Log model to MLflow
+        # Log model to MLflow (so it shows up in run artifacts and can be registered to UC)
         if log_model:
             logger.info("Logging model to MLflow...")
             try:
+                # ExMedBert has shared tensors; safetensors fails. Pass safe_serialization=False if supported.
                 mlflow.transformers.log_model(
                     transformers_model=trainer.model,
                     artifact_path="model",
+                    safe_serialization=False,
                 )
                 logger.info("Model successfully logged to MLflow")
+            except TypeError:
+                # Older MLflow may not accept safe_serialization; try without, then fallback to logging saved dir
+                try:
+                    mlflow.transformers.log_model(
+                        transformers_model=trainer.model,
+                        artifact_path="model",
+                    )
+                    logger.info("Model successfully logged to MLflow")
+                except Exception as e:
+                    _log_saved_model_as_artifact(save_path, e)
             except Exception as e:
-                logger.warning(f"Failed to log model to MLflow: {e}")
+                _log_saved_model_as_artifact(save_path, e)
         
         # Register model to Unity Catalog
         if register_model:
