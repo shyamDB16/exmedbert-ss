@@ -1,5 +1,11 @@
 # Mosaic Streaming Implementation Summary
 
+> **Scope: classic/Mosaic Streaming path.** This implementation is retained for
+> comparison, rollback, and classic-cluster users. The recommended Databricks
+> AI Runtime path uses Spark-generated Parquet snapshots, `UCVolumeDataset`, and
+> distributed checkpointing; see the
+> [AI Runtime project](experiments/ai_runtime_exmedbert/README.md).
+
 ## Overview
 
 This document summarizes the implementation of Mosaic Streaming support for ExMed-BERT, enabling efficient cloud-based data loading for distributed training on Databricks and other cloud platforms.

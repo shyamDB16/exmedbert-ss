@@ -1,5 +1,11 @@
 # MLflow Integration Summary
 
+> **Scope: classic/Mosaic Streaming path.** This document describes the MLflow
+> integration in the original classic-cluster training workflow. For the
+> recommended Databricks AI Runtime implementation, start with the
+> [AI Runtime project](experiments/ai_runtime_exmedbert/README.md) and its
+> [demo runbook](experiments/ai_runtime_exmedbert/DEMO.md).
+
 ## ✅ Complete Implementation
 
 Comprehensive MLflow tracking and Unity Catalog Model Registry integration has been added to ExMed-BERT streaming training.
