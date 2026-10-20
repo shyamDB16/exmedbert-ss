@@ -65,6 +65,7 @@ Runtime workflow.
 exmed_bert/                         Core ExMed-BERT model and data APIs
 experiments/ai_runtime_exmedbert/  Recommended AI Runtime demonstration
 experiments/ai_runtime_synthea/    Minimal AI Runtime data-transport proof
+extra/                              Optional examples outside the supported path
 scripts/                            Classic/Mosaic utilities and entry points
 docs/                               Architecture and operational guides
 ```
