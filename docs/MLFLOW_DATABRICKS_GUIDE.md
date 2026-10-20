@@ -1,5 +1,11 @@
 # MLflow Integration with Databricks & Unity Catalog
 
+> **Scope: classic/Mosaic Streaming path.** This guide documents explicit
+> MLflow integration in `scripts/train_entrypoint_streaming.py`. AI Runtime
+> creates and manages training-run observability differently; start with the
+> [AI Runtime project](../experiments/ai_runtime_exmedbert/README.md) and its
+> [demo runbook](../experiments/ai_runtime_exmedbert/DEMO.md).
+
 This guide explains how to use MLflow tracking and Unity Catalog Model Registry with ExMed-BERT streaming training on Databricks.
 
 ## Table of Contents

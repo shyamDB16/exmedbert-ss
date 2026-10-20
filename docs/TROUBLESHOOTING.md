@@ -1,5 +1,10 @@
 # Troubleshooting Guide
 
+> **Scope: original local/Conda workflow.** This guide does not cover
+> Databricks AI Runtime submission, Unity Catalog volume loading, or distributed
+> checkpoint recovery. For those topics, use the
+> [AI Runtime project](../experiments/ai_runtime_exmedbert/README.md).
+
 Solutions to common issues when setting up and using ExMed-BERT.
 
 ---

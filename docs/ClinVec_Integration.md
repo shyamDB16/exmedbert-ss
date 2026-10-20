@@ -1,5 +1,10 @@
 # ClinVec Integration with ExMed-BERT
 
+> **Scope: runtime-neutral model initialization.** ClinVec is optional and is
+> not required by the AI Runtime compatibility demo. Start with the
+> [AI Runtime project](../experiments/ai_runtime_exmedbert/README.md) for the
+> supported Databricks workflow.
+
 This guide explains how to integrate pre-trained ClinVec embeddings with your ExMed-BERT model.
 
 ## Overview

@@ -1,5 +1,9 @@
 # Mosaic Streaming Quick Start
 
+> **Scope: classic/Mosaic Streaming path.** This is retained for comparison and
+> rollback. For the recommended serverless GPU workflow, use the
+> [AI Runtime project](../experiments/ai_runtime_exmedbert/README.md).
+
 Quick reference for running ExMed-BERT training with Mosaic Streaming.
 
 ## Installation

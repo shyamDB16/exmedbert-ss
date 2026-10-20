@@ -1,5 +1,10 @@
 # Synthetic Patient Data Generator
 
+> **Scope: local model test fixture.** This generator is useful for unit and
+> ClinVec experiments, but it is not the source used by the AI Runtime demo.
+> The reproducible demo uses Synthea; see the
+> [Synthea generation guide](../experiments/ai_runtime_exmedbert/synthea/README.md).
+
 ## Overview
 
 This script generates synthetic patient data with realistic demographics and medical codes, including novel codes that are hierarchical cousins of existing codes.

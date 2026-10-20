@@ -46,8 +46,8 @@ component:
 | Current responsibility | AI Runtime-native component |
 |---|---|
 | Spark-to-training serialization | Versioned Parquet shards in a UC volume |
-| File caching and rank/worker partitioning | `serverless_gpu.data.UCVolumeDataset` |
-| Concurrent loading and prefetching | `serverless_gpu.data.DataLoader` |
+| File caching and rank/worker partitioning | `databricks.air.data.UCVolumeDataset` |
+| Concurrent loading and prefetching | `databricks.air.data.DataLoader` |
 | Model and optimizer checkpoints | PyTorch Distributed Checkpoint (DCP) with `UCVolumeWriter` and `UCVolumeReader` |
 | Dataloader position and random state | Explicit training-state checkpoint managed by ExMed-BERT |
 
@@ -56,15 +56,18 @@ on their own, capture the current position of the training data pipeline.
 
 ### Current platform constraints
 
-As of September 2026, the relevant AI Runtime capabilities are in Preview or
-Beta and should be revalidated before a production migration:
+The relevant AI Runtime capabilities should be revalidated before a production
+migration:
 
 - AI Runtime data access goes through Unity Catalog. Source tables and exported
   files must be registered in or governed by Unity Catalog and accessible to the
   run identity.
-- `UCVolumeDataset`, `serverless_gpu.data.DataLoader`, `UCVolumeWriter`, and
-  `UCVolumeReader` require GPU environment 5 or above. These APIs were verified
-  with `serverless_gpu 0.5.23+patch1` on numeric environment version `"5"`.
+- The workspace-verified implementation used GPU environment 5 and
+  `serverless_gpu 0.5.23+patch1`. Current public documentation exposes
+  `UCVolumeDataset`, `DataLoader`, `UCVolumeWriter`, and `UCVolumeReader` through
+  `databricks.air.data` from the `databricks-sdk-air[data]` package. Treat the
+  namespace change as an API migration: update code and tests together, then
+  rerun the recovery proof before changing the verified environment pin.
 - Distributed notebook training with `@distributed` currently uses a single
   8xH100 node. It is not a general replacement for classic multi-node training.
 - The native distributed API supports DDP, FSDP, and DeepSpeed. DDP is the
@@ -95,7 +98,7 @@ Immutable dataset snapshot in a UC volume
 AI Runtime training process
   - UCVolumeDataset
   - Parquet-decoding IterableDataset
-  - serverless_gpu.data.DataLoader
+  - databricks.air.data.DataLoader
   - single-GPU PyTorch first; DDP or Ray Train after sharding tests
         |
         v
@@ -223,12 +226,12 @@ adapter that:
 2. Opens the Parquet file or row groups with PyArrow.
 3. Converts rows to the tensor dictionary expected by the model.
 4. Applies dynamic masking and other per-epoch transformations.
-5. Yields samples to `serverless_gpu.data.DataLoader`.
+5. Yields samples to `databricks.air.data.DataLoader`.
 
 Illustrative structure:
 
 ```python
-from serverless_gpu.data import DataLoader, UCVolumeDataset
+from databricks.air.data import DataLoader, UCVolumeDataset
 from torch.utils.data import IterableDataset
 
 
@@ -297,8 +300,8 @@ completion of that task.
 Use PyTorch Distributed Checkpoint rather than `torch.save` for distributed
 model and optimizer state. On AI Runtime, use:
 
-- `serverless_gpu.data.UCVolumeWriter` when saving.
-- `serverless_gpu.data.UCVolumeReader` when restoring.
+- `databricks.air.data.UCVolumeWriter` when saving.
+- `databricks.air.data.UCVolumeReader` when restoring.
 - `torch.distributed.checkpoint.async_save` where appropriate to overlap upload
   with training.
 
@@ -354,32 +357,37 @@ The implementation should:
 - Log dataset version, manifest, effective global batch size, world size, and
   checkpoint location.
 
-## Migration plan
+## Implementation status and next steps
 
-### Phase 1: Establish a reproducible Spark boundary
+### Phase 1: Establish a reproducible Spark boundary — complete
 
 - Define and validate the patient-sequence schema.
 - Replace `randomSplit` with a stable patient-level split.
 - Add versioned Parquet export and manifest generation.
 - Retain the MDS export path for comparison.
 
-### Phase 2: Implement native AI Runtime loading
+### Phase 2: Implement native AI Runtime loading — complete on one GPU
 
-- Add the Parquet-decoding `IterableDataset`.
-- Integrate `UCVolumeDataset` and `serverless_gpu.data.DataLoader`.
-- Run single-GPU correctness tests against the existing Mosaic dataset.
-- Validate that every sample is consumed exactly once across eight ranks.
+- The Parquet-decoding `IterableDataset` and `UCVolumeDataset` path are implemented.
+- Single-GPU correctness, patient coverage, and checkpoint recovery are verified.
+- The verified code still uses the predecessor `serverless_gpu.data` namespace;
+  migrate it to `databricks.air.data` as one tested code change.
+- Exact-once sample consumption across multiple ranks remains pending.
 
-### Phase 3: Add distributed execution and checkpoints
+### Phase 3: Add distributed execution and checkpoints — partially complete
 
-- Add the `@distributed(gpus=8)` DDP entrypoint.
-- Add DCP save and restore with UC volume storage.
-- Implement shard-boundary data-position checkpoints.
-- Make MLflow logging, model saving, and registration rank-safe.
+- DCP save, fresh-object restore, incomplete-checkpoint rejection, and
+  epoch-boundary recovery through UC volume storage are complete.
+- Multi-GPU DDP, rank/worker sharding validation, and rank-safe final artifact
+  ownership remain pending.
+- Mid-epoch data-position recovery is optional future work; the verified demo
+  intentionally repeats an interrupted epoch.
 
-### Phase 4: Benchmark and decide
+### Phase 4: Benchmark and decide — partially complete
 
-Compare Mosaic and the native path using the same dataset snapshot:
+Single-GPU correctness and DataLoader worker benchmarks are complete. A
+representative-scale Mosaic-versus-native and multi-GPU comparison should still
+measure:
 
 - Samples per second and time to first batch.
 - GPU utilization and GPU memory.
@@ -391,18 +399,16 @@ Compare Mosaic and the native path using the same dataset snapshot:
 Do not remove Mosaic Streaming until the native path meets correctness and
 recovery requirements.
 
-## Open design questions
+## Remaining scale-out decisions
 
-- Should the Parquet snapshot contain pre-tokenized arrays or normalized raw
-  codes tokenized by the training adapter?
-- Is shard-boundary resume sufficient for expected job duration and failure
-  rate?
 - What target shard size provides the best trade-off between parallelism,
   metadata overhead, and recovery granularity?
 - Should dynamic masking use one deterministic seed per `(epoch, patient_id)` to
   simplify exact resume?
 - How should vocabulary artifacts be represented long-term instead of pickled
   Python objects in `embeddings.pt`?
+- When should the verified implementation move from `serverless_gpu.data` to
+  the current `databricks.air.data` package namespace?
 
 ## References
 

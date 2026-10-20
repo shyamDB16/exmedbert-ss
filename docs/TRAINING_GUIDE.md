@@ -1,5 +1,11 @@
 # ExMed-BERT Training Guide
 
+> **Scope: original local model-development workflow.** The historical
+> `train.bat` and `train_interactive.bat` launchers referenced below are not
+> present in the current repository. For the supported Databricks workflow, use
+> the [AI Runtime project](../experiments/ai_runtime_exmedbert/README.md). The
+> direct Python scripts remain useful as model-development references.
+
 Complete guide for training ExMed-BERT with synthetic data and ClinVec embeddings.
 
 ---
