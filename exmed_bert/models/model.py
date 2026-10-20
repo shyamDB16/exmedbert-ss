@@ -73,7 +73,7 @@ class ExMedBertEmbeddings(nn.Module):
             self.state_embeddings = None
 
 
-        self.code_embeddings.weight.requires_grad = False
+        self.code_embeddings.weight.requires_grad = not config.freeze_code_embeddings
 
      
         # Other configuration
@@ -520,10 +520,6 @@ class ExMedBertForMaskedLM(ExMedBertModel):
         code_prediction_scores = self.code_classifier(last_hidden)
 
         loss_fct = nn.CrossEntropyLoss(ignore_index=-100)
-        plos_fct = nn.CrossEntropyLoss(
-            weight=torch.Tensor(self.config.plos_weight).to(device=input_ids.device)
-        )
-
         if code_labels is not None:
             code_loss = loss_fct(
                 code_prediction_scores.view(-1, self.config.code_vocab_size),
@@ -541,14 +537,23 @@ class ExMedBertForMaskedLM(ExMedBertModel):
             plos_logprobs, plos_logits = self.plos_classifier(last_hidden)
             output_dict["plos_logits"] = plos_logits
 
-            if plos_label is not None and code_labels is None:
+            if plos_label is not None:
                 if plos_label.device != input_ids.device:
                     plos_label = plos_label.to(input_ids.device)
 
+                plos_fct = nn.CrossEntropyLoss(
+                    weight=torch.tensor(
+                        self.config.plos_weight,
+                        dtype=torch.float,
+                        device=input_ids.device,
+                    )
+                    if self.config.plos_weight is not None
+                    else None
+                )
                 plos_loss = plos_fct(plos_logits, plos_label)
 
                 output_dict["plos_loss"] = plos_loss
-                output_dict["loss"] += plos_loss
+                output_dict["loss"] = output_dict.get("loss", 0.0) + plos_loss
 
         return output_dict
 

@@ -1,0 +1,25 @@
+resources:
+  jobs:
+    prepare_exmedbert_snapshot:
+      name: prepare-exmedbert-snapshot
+      description: Build an immutable, quality-gated ExMed-BERT Parquet snapshot with Spark.
+      tasks:
+        - task_key: prepare_snapshot
+          spark_python_task:
+            python_file: ../spark/prepare_snapshot.py
+            parameters:
+              - --source-root
+              - ${var.source_root}
+              - --output-root
+              - ${var.output_root}
+              - --snapshot-version
+              - ${var.snapshot_version}
+              - --num-shards
+              - ${var.num_shards}
+              - --max-oov-fraction
+              - ${var.max_oov_fraction}
+          environment_key: default
+      environments:
+        - environment_key: default
+          spec:
+            client: "4"

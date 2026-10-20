@@ -1,0 +1,45 @@
+experiment_name: air-exmedbert-synthea
+
+environment:
+  version: "5"
+  dependencies:
+    - torch
+    - transformers==4.46.3
+    - mlflow>=3.7.0
+    - pyarrow>=14.0.0
+    - numpy>=1.26.0
+
+compute:
+  num_accelerators: 1
+  accelerator_type: GPU_1xA10
+
+code_source:
+  type: snapshot
+  snapshot:
+    root_path: ../..
+    include_paths:
+      - exmed_bert
+      - experiments/ai_runtime_exmedbert
+
+command: |
+  cd $CODE_SOURCE_PATH
+  python -m experiments.ai_runtime_exmedbert.training.train \
+    --snapshot-root "$SNAPSHOT_ROOT" \
+    --checkpoint-root "$CHECKPOINT_ROOT" \
+    --epochs "${EPOCHS:-2}" \
+    --batch-size "${BATCH_SIZE:-16}" \
+    --max-sequence-length 128 \
+    --num-workers "${NUM_WORKERS:-0}" \
+    --prefetch-factor "${PREFETCH_FACTOR:-4}" \
+    --mask-medications
+
+max_retries: 0
+timeout_minutes: 60
+
+env_variables:
+  SNAPSHOT_ROOT: /Volumes/shyam_internal_ssa_catalog/deep_learning/exmedbert_air/exmedbert/snapshots/synthea-v2
+  CHECKPOINT_ROOT: /Volumes/shyam_internal_ssa_catalog/deep_learning/exmedbert_air/exmedbert/checkpoints/synthea-v2
+  EPOCHS: "2"
+  BATCH_SIZE: "16"
+  NUM_WORKERS: "0"
+  PREFETCH_FACTOR: "4"

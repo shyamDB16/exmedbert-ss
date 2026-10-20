@@ -1,0 +1,1 @@
+"""Spark snapshot preparation."""

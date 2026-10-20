@@ -26,6 +26,7 @@ class ExMedBertConfig(PretrainedConfig):
         initializer_range: float = 0.02,
         layer_norm_eps: float = 1e-12,
         pad_token_id: int = 0,
+        freeze_code_embeddings: bool = True,
         gradient_checkpointing: bool = False,
         predict_codes: bool = True,
         predict_los: bool = False,
@@ -98,6 +99,7 @@ class ExMedBertConfig(PretrainedConfig):
         self.initializer_range = initializer_range
         self.initialization = initialization
         self.layer_norm_eps = layer_norm_eps
+        self.freeze_code_embeddings = freeze_code_embeddings
         self.gradient_checkpointing = gradient_checkpointing
 
         # configuration for rnn classification heads

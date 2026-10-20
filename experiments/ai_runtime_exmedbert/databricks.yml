@@ -1,0 +1,62 @@
+bundle:
+  name: exmedbert-ai-runtime
+
+include:
+  - resources/*.yml
+
+variables:
+  source_root:
+    description: UC volume directory containing Synthea CSV files
+    default: /Volumes/shyam_internal_ssa_catalog/deep_learning/exmedbert_air/synthea/raw/sample-20260910
+  output_root:
+    description: UC volume parent directory for immutable ExMed-BERT snapshots
+    default: /Volumes/shyam_internal_ssa_catalog/deep_learning/exmedbert_air/exmedbert/snapshots
+  snapshot_version:
+    description: New immutable snapshot version
+    default: synthea-v2
+  num_shards:
+    description: Number of Parquet files per split
+    default: 4
+  max_oov_fraction:
+    description: Maximum validation/test OOV fraction for this snapshot
+    default: 0.10
+  downstream_source_root:
+    description: Versioned raw source used for downstream endpoint audits
+    default: /Volumes/shyam_internal_ssa_catalog/deep_learning/exmedbert_air/synthea/raw/synthea-v4.0.0-p10000-seed201214-ref20250101
+  audit_output_root:
+    description: UC volume parent directory for immutable downstream audits
+    default: /Volumes/shyam_internal_ssa_catalog/deep_learning/exmedbert_air/exmedbert/audits
+  audit_version:
+    description: New immutable endpoint audit version
+    default: synthea-v4-p10000-v1
+  observation_end_date:
+    description: End of observable Synthea follow-up in YYYY-MM-DD format
+    default: "2025-01-01"
+  plos_threshold_days:
+    description: Completed inpatient duration threshold for PLOS
+    default: 7
+  pretrain_snapshot_root:
+    description: Immutable pretraining snapshot providing vocabulary and split identity
+    default: /Volumes/shyam_internal_ssa_catalog/deep_learning/exmedbert_air/exmedbert/snapshots/synthea-v4-p10000-v1
+  downstream_snapshot_output_root:
+    description: UC volume parent directory for supervised snapshots
+    default: /Volumes/shyam_internal_ssa_catalog/deep_learning/exmedbert_air/exmedbert/downstream/plos/snapshots
+  plos_snapshot_version:
+    description: New immutable admission-time PLOS snapshot version
+    default: synthea-v4-p10000-plos7d-v1
+  downstream_num_shards:
+    description: Number of Parquet shards per supervised split
+    default: 16
+  downstream_train_fraction:
+    description: Fraction of training patients retained in the supervised snapshot
+    default: 1.0
+  downstream_subset_seed:
+    description: Seed used for deterministic nested training-patient subsets
+    default: 201214
+
+targets:
+  dev:
+    default: true
+    mode: development
+    workspace:
+      profile: fevm-default

@@ -1,0 +1,1 @@
+"""Shared snapshot contracts."""

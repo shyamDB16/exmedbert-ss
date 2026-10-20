@@ -1,0 +1,50 @@
+experiment_name: air-exmedbert-plos
+
+environment:
+  version: "5"
+  dependencies:
+    - torch
+    - transformers==4.46.3
+    - mlflow>=3.7.0
+    - pyarrow>=14.0.0
+    - numpy>=1.26.0
+
+compute:
+  num_accelerators: 1
+  accelerator_type: GPU_1xA10
+
+code_source:
+  type: snapshot
+  snapshot:
+    root_path: ../..
+    include_paths:
+      - exmed_bert
+      - experiments/ai_runtime_exmedbert
+
+command: |
+  cd $CODE_SOURCE_PATH
+  python -m experiments.ai_runtime_exmedbert.training.train_plos \
+    --snapshot-root "$SNAPSHOT_ROOT" \
+    --checkpoint-root "$CHECKPOINT_ROOT/${INITIALIZATION:-finetune}" \
+    --pretrained-checkpoint "$PRETRAINED_CHECKPOINT" \
+    --initialization "${INITIALIZATION:-finetune}" \
+    --epochs "${EPOCHS:-5}" \
+    --batch-size "${BATCH_SIZE:-64}" \
+    --seed "${SEED:-201214}" \
+    --max-sequence-length 128 \
+    --num-workers "${NUM_WORKERS:-6}" \
+    --prefetch-factor "${PREFETCH_FACTOR:-4}"
+
+max_retries: 0
+timeout_minutes: 60
+
+env_variables:
+  SNAPSHOT_ROOT: /Volumes/shyam_internal_ssa_catalog/deep_learning/exmedbert_air/exmedbert/downstream/plos/snapshots/synthea-v4-p10000-plos7d-v1
+  CHECKPOINT_ROOT: /Volumes/shyam_internal_ssa_catalog/deep_learning/exmedbert_air/exmedbert/downstream/plos/checkpoints/synthea-v4-p10000-plos7d-v1
+  PRETRAINED_CHECKPOINT: /Volumes/shyam_internal_ssa_catalog/deep_learning/exmedbert_air/exmedbert/checkpoints/synthea-v4-p10000-v1/epoch_000002_a20e86968ea643619df515cff875c52a
+  INITIALIZATION: finetune
+  EPOCHS: "5"
+  BATCH_SIZE: "64"
+  SEED: "201214"
+  NUM_WORKERS: "6"
+  PREFETCH_FACTOR: "4"

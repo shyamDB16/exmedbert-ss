@@ -2,6 +2,11 @@
 
 This guide explains how to migrate ExMed-BERT training from the current `.pt` file-based data loading to Mosaic Streaming for efficient cloud-based data loading.
 
+> **AI Runtime alternative:** For a design based on Spark-generated Parquet
+> snapshots, `serverless_gpu.data.UCVolumeDataset`, and PyTorch Distributed
+> Checkpoint, see
+> [AI Runtime Data Loading and Checkpointing Architecture](AI_RUNTIME_DATA_AND_CHECKPOINTING.md).
+
 ## Table of Contents
 
 1. [Overview](#overview)
@@ -572,4 +577,3 @@ For questions or issues, refer to:
 - [Mosaic Streaming Documentation](https://docs.mosaicml.com/projects/streaming/)
 - [Databricks ML Documentation](https://docs.databricks.com/machine-learning/)
 - [ExMed-BERT Documentation](./README.md)
-

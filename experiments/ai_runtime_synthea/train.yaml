@@ -1,0 +1,35 @@
+experiment_name: air-exmedbert-synthea
+
+environment:
+  # fevm-default does not currently enable managed base environments.
+  # Numeric GPU environment 5 supports the native serverless_gpu data APIs.
+  version: "5"
+  dependencies:
+    - torch
+    - mlflow>=3.7.0
+    - pyarrow>=14.0.0
+
+compute:
+  num_accelerators: 1
+  accelerator_type: GPU_1xA10
+
+code_source:
+  type: snapshot
+  snapshot:
+    root_path: .
+
+command: |
+  cd $CODE_SOURCE_PATH
+  python train.py \
+    --snapshot-root /Volumes/shyam_internal_ssa_catalog/deep_learning/exmedbert_air/synthea/snapshots/v1 \
+    --checkpoint-root /Volumes/shyam_internal_ssa_catalog/deep_learning/exmedbert_air/synthea/checkpoints/v1 \
+    --epochs "${EPOCHS:-2}" \
+    --batch-size 16 \
+    --num-workers 0 \
+    --use-time
+
+max_retries: 0
+timeout_minutes: 60
+
+env_variables:
+  EPOCHS: "2"

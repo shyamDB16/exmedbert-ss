@@ -1,0 +1,18 @@
+{
+  "volume_root": "/Volumes/shyam_internal_ssa_catalog/deep_learning/exmedbert_air",
+  "source_release": "synthea-v4.0.0-p10000-seed201214-ref20250101",
+  "pretrain_snapshot_version": "synthea-v4-p10000-v1",
+  "audit_version": "synthea-v4-p10000-v1",
+  "plos_snapshot_version": "synthea-v4-p10000-plos7d-v1",
+  "pretrain_epochs": 10,
+  "pretrain_batch_size": 32,
+  "downstream_epochs": 5,
+  "downstream_batch_size": 64,
+  "downstream_train_fraction": 1.0,
+  "downstream_subset_seed": 201214,
+  "downstream_training_seeds": [201214],
+  "num_workers": 6,
+  "prefetch_factor": 4,
+  "num_shards": 16,
+  "max_oov_fraction": 0.01
+}

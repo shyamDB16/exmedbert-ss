@@ -1,0 +1,28 @@
+resources:
+  jobs:
+    profile_exmedbert_endpoints:
+      name: profile-exmedbert-endpoints
+      description: Profile leakage-safe supervised endpoint candidates with serverless Spark.
+      tasks:
+        - task_key: profile_endpoints
+          spark_python_task:
+            python_file: ../spark/profile_endpoints.py
+            parameters:
+              - --source-root
+              - ${var.downstream_source_root}
+              - --output-root
+              - ${var.audit_output_root}
+              - --audit-version
+              - ${var.audit_version}
+              - --observation-end-date
+              - ${var.observation_end_date}
+              - --plos-threshold-days
+              - ${var.plos_threshold_days}
+              - --readmission-days
+              - "30"
+              - "180"
+          environment_key: default
+      environments:
+        - environment_key: default
+          spec:
+            client: "4"
